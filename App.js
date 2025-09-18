@@ -1,13 +1,27 @@
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from './src/components/Button';
 import { styles } from './App.styles';
 import { currencies } from './src/constants/currencies';
 import { Input } from './src/components/input';
 import { ResultCard } from './src/components/ResultCard';
 import { exchangeRateApi } from './src/services/api';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { convertCurrency } from './utils/convertCurrency';
+import * as Notifications from 'expo-notifications';
+
+
+
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+
 
 
 export default function App() {
@@ -18,6 +32,17 @@ export default function App() {
   const [result, setResult] = useState('')
   const [loading, setLoading] = useState(false)
   const [exchangeRate, setExchangeRate] = useState(null)
+
+
+  //  Pedir permissão para notificações
+  useEffect(() => {
+    (async () => {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Permissão para notificações negada!');
+      }
+    })();
+  }, []);
 
 
   async function fetchExchangeRate() {
@@ -35,14 +60,24 @@ export default function App() {
       const convertedAmount = convertCurrency(amount, rate)
 
       setResult(convertedAmount)
-    } catch(err){
-      alert("Erro, tente noveamente")
+
+      // Disparar notificação
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Conversão concluída ✅',
+          body: `${amount} ${fromCurrency} = ${convertedAmount} ${toCurrency}`,
+        },
+        trigger: null, // dispara imediatamente
+      });
+
+    } catch (err) {
+      alert("Erro, tente novamente")
     } finally {
       setLoading(false)
     }
   }
 
-  function swapCurrency(){
+  function swapCurrency() {
     setFromCurrency(toCurrency)
     setToCurrency(fromCurrency)
     setResult('')
